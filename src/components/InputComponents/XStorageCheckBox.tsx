@@ -49,23 +49,17 @@ export const XStorageCheckBox: React.FC<XStorageCheckBoxProps> = (props) => {
               peer-checked:bg-green-200 disabled:bg-sky-300 hover:bg-gray-50 
               dark:text-gray-400 dark:bg-gray-800 dark:hover:bg-gray-700 transition-all duration-300 
               transform hover:scale-105 shadow-md hover:shadow-lg
-              ${
-                props.disabled && props.disabled[index] ? " hover:cursor-not-allowed bg-gray-400/1 text-gray-300" : ""
-              }  
+              ${props.disabled && props.disabled[index] ? " hover:cursor-not-allowed bg-gray-400/1 text-gray-300" : ""}  
             `)}>
               <ToolTip tooltip={props.disabled && props.disabled[index] ? "Coming soon" : ""}>
                 <div className="block">
                   {/* add logo maybe */}
-                  <div className="w-full text-lg font-semibold">{title}</div>
+                  <div className="w-full text-lg font-semibold hidden">{title}</div>
                   <div className="w-full text-sm hidden"> {descriptions[index]}</div>
-                </div>{" "}
+                </div>
               </ToolTip>
-
-              {/* {props.disabled && props.disabled[index] && <div className="w-full h-full"></div>} */}
-            </label>{" "}
-            <label
-              htmlFor={`react-option-${title + "->" + index}`}
-              className=" flex p-2 opacity-0 peer-checked:opacity-100 ">
+            </label>
+            <label htmlFor={`react-option-${title + "->" + index}`} className=" flex p-2 opacity-0 peer-checked:opacity-100 ">
               <CheckCircle className="ml-auto" color="green"></CheckCircle>
             </label>
           </li>

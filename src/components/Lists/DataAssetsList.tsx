@@ -39,11 +39,10 @@ export const DataAssetList: React.FC = () => {
   const [storedDataAssetsLightHouse, setStoredDataAssetsLightHouse] = useState<DataAsset[]>([]);
 
   const { tokenLogin } = useGetLoginInfo();
-  const theToken = tokenLogin?.nativeAuthToken;
-
   const [latestVersionCid, setLatestVersionCid] = useState<{ [key: string]: { version: number; cidv1: string } }>({});
   const [manifestFiles, setManifestFiles] = useState<ManifestFile[]>([]);
   const [manifestFilesLighthouse, setManifestFilesLighthouse] = useState<ManifestFile[]>([]);
+  const theToken = tokenLogin?.nativeAuthToken;
 
   // fetch all data assets of an address
   async function fetchAllDataAssetsOfAnAddress() {
@@ -223,7 +222,7 @@ export const DataAssetList: React.FC = () => {
 
   return (
     <div className="p-4 flex flex-col">
-      <div className="bold text-xl text-foreground my-16">Data assets from Light House</div>
+      {/* <div className="bold text-xl text-foreground my-16">Data assets from Light House</div> */}
       <div className="gap-4 grid grid-cols-3">
         {manifestFilesLighthouse.map((manifest: ManifestFile, index) => (
           <Link
@@ -240,7 +239,7 @@ export const DataAssetList: React.FC = () => {
           </Link>
         ))}
       </div>
-      <div className="bold text-xl text-foreground my-16">Data assets from Ipfs</div>
+      {/* <div className="bold text-xl text-foreground my-16">Data assets from Ipfs</div> */}
       <div className="gap-4 grid grid-cols-3">
         {manifestFiles.map((manifest: ManifestFile, index) => (
           <Link
@@ -259,3 +258,4 @@ export const DataAssetList: React.FC = () => {
     </div>
   );
 };
+

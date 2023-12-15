@@ -10,8 +10,7 @@ import { CopyIcon, InfoIcon, Lightbulb, XCircle } from "lucide-react";
 import ProgressBar from "../../components/ProgressBar";
 import toast, { Toaster } from "react-hot-toast";
 
-import { theToken } from "../../utils/constants";
-import { generateRandomString } from "../../utils/utils";
+ import { generateRandomString } from "../../utils/utils";
 import { ErrorBoundary } from "react-error-boundary";
 import ErrorFallbackMusicDataNfts from "../../components/ErrorComponents/ErrorFallbackMusicDataNfts";
 import { Err } from "@multiversx/sdk-core/out";
@@ -49,6 +48,7 @@ export const UploadData: React.FC = (props) => {
   const { tokenLogin } = useGetLoginInfo();
   const [isUploadButtonDisabled, setIsUploadButtonDisabled] = useState(true);
   const [isUploadingManifest, setIsUploadingManifest] = useState(false);
+  const theToken = tokenLogin?.nativeAuthToken;
 
   const [progressBar, setProgressBar] = useState(0);
   const [manifestCid, setManifestCid] = useState(null);
@@ -61,7 +61,7 @@ export const UploadData: React.FC = (props) => {
     stream: "true",
   });
 
-  const isIPNS = descentralized?.includes("IPNS");
+  const isIPNS = descentralized?.includes("IPNS") || (ipnsKey ? true : false);
 
   useEffect(() => {
     if (manifestFile && manifestFile.data_stream) {
@@ -142,7 +142,7 @@ export const UploadData: React.FC = (props) => {
   }
 
   async function uploadFilesRequest(filesToUpload: FormData) {
-    const uploadURL = `${API_URL}/${ipnsKey || descentralized.includes("IPNS") ? "upload_v2" : "upload"}`;
+    const uploadURL = `${API_URL}/${isIPNS ? "upload_v2" : "upload"}`;
     console.log("uploadURL", uploadURL);
     try {
       const response = await axios.post(uploadURL, filesToUpload, {
@@ -316,9 +316,9 @@ export const UploadData: React.FC = (props) => {
       const response = await uploadFilesRequest(formDataFormat);
       console.log(response[0], "MANIFEST file uploaded successfully");
       let ipfs: any = "";
-      if (isIPNS || ipnsKey) {
+      if (isIPNS) {
         const ipnsHash = await addToIpns(response[0].hash);
-        ipfs = "ipns/" + ipnsHash; //"/" + response[0]?.fileName;
+        ipfs = "ipfs/" + response[0]?.folderHash + "/" + response[0]?.fileName; //+ ipnsHash;"/" + response[0]?.fileName;
       } else {
         ipfs = "ipfs/" + response[0]?.folderCid + "/" + response[0]?.fileName;
       }
@@ -513,7 +513,7 @@ export const UploadData: React.FC = (props) => {
           }}
         />
         <b className=" py-2 text-xl  font-medium"> Let’s update your data! Here is what you wanted to do... </b>
-        <div className="flex flex-row gap-4 mb-4">
+        <div className="flex flex-row gap-4 mb-4 hidden">
           {action && (
             <span className="w-32 border-2 text-bold border-blue-400 bg-blue-900 text-blue-400 text-center text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
               {action}
