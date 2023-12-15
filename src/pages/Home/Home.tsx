@@ -99,10 +99,10 @@ export const Home: React.FC = () => {
                 <XStorageCheckBox
                   title="Decentralized web3 Storage"
                   description="What decentralized solution would you like to go with?"
-                  options={["DNS (domain) + IPFS", "DNS (domain) + Arweave", "Ceramic", "IPNS + IPFS"]}
+                  options={["DNS (domain) + IPFS",  "IPNS + IPFS"]}
                   descriptions={descriptions}
                   setterFunction={setDescentralizedStorage}
-                  disabled={[false, true, true, false]}
+                  disabled={[false,   false]}
                 />
               )}
             </>
