@@ -448,6 +448,7 @@ export const UploadData: React.FC = (props) => {
       console.log(response[0], "MANIFEST file uploaded successfully");
       let ipfs: any = "";
       if (isIPNS) {
+        console.log("IPNS");
         const ipnsHash = await addToIpns(response[0].hash);
         ipfs = "ipfs/" + response[0]?.folderHash + "/" + response[0]?.fileName; //+ ipnsHash;"/" + response[0]?.fileName;
       } else {
@@ -943,7 +944,7 @@ export const UploadData: React.FC = (props) => {
           </div>
         </div>
 
-        {isUploadingManifest && progressBar < 100 && <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 z-5 "></div>}
+        {/* {isUploadingManifest && progressBar < 100 && <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 z-5 "></div>} */}
         {isUploadingManifest && progressBar < 100 && <ProgressBar progress={progressBar} />}
         {isUploadingManifestLightHouse && progressBarLightHouse < 100 && <ProgressBar progress={progressBarLightHouse} />}
       </div>

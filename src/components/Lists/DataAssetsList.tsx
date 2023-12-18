@@ -146,9 +146,10 @@ export const DataAssetList: React.FC = () => {
 
       let latestVersionManifestFile: { [key: string]: { version: number; cidv1: string } } = {};
       filteredData.forEach((item) => {
-        const fileName = item.fileName.split(".-")[1].split("|")[0]; //   filename format is "1.-manifest-name-creator|random-.json"
+        console.log("item : ", item);
+        const fileName = item.fileName?.split(".-")[1]; //   filename format is "1.-manifest-name-creator|random-.json"
 
-        const version = parseInt(item.fileName.split(".-")[0]);
+        const version = parseInt(item.fileName?.split(".-")[0]);
         if (!fileName) return;
 
         if (!latestVersionManifestFile[fileName] || version > latestVersionManifestFile[fileName].version) {
