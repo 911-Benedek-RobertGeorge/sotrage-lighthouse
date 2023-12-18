@@ -13,8 +13,6 @@ import toast, { Toaster } from "react-hot-toast";
  import { generateRandomString } from "../../utils/utils";
 import { ErrorBoundary } from "react-error-boundary";
 import ErrorFallbackMusicDataNfts from "../../components/ErrorComponents/ErrorFallbackMusicDataNfts";
-import { Err } from "@multiversx/sdk-core/out";
-import { error } from "console";
 
 // todo verify and dont allow users to upload manifest files without songs
 // todo when reloading after uploading a manifest file, make it to show the new manifest file not the old one
@@ -46,12 +44,18 @@ export const UploadData: React.FC = (props) => {
 
   const [numberOfSongs, setNumberOfSongs] = useState(1);
   const { tokenLogin } = useGetLoginInfo();
-  const [isUploadButtonDisabled, setIsUploadButtonDisabled] = useState(true);
-  const [isUploadingManifest, setIsUploadingManifest] = useState(false);
   const theToken = tokenLogin?.nativeAuthToken;
 
+  const [isUploadButtonDisabled, setIsUploadButtonDisabled] = useState(true);
+  const [isUploadingManifest, setIsUploadingManifest] = useState(false);
+  const [isUploadingManifestLightHouse, setIsUploadingManifestLightHouse] = useState(false);
+
   const [progressBar, setProgressBar] = useState(0);
+  const [progressBarLightHouse, setProgressBarLightHouse] = useState(0);
+
   const [manifestCid, setManifestCid] = useState(null);
+  const [manifestCidLightHouse, setManifestCidLightHouse] = useState("");
+
   const [formData, setFormData] = useState({
     name: "",
     creator: "",
@@ -141,6 +145,48 @@ export const UploadData: React.FC = (props) => {
     return response;
   }
 
+  async function uploadSongsAndImagesFilesLightHouse() {
+    console.log("Starting to upload songs and images files");
+    /// refactor , iterate through the files, not through the songsData
+    const filesToUpload = new FormData();
+    try {
+      //iterating over the songsData and for each object add its image and song to the formData
+      Object.values(songsData).forEach((songData, idx) => {
+        if (songData && songData?.title && filePairs[idx + 1]) {
+          if (filePairs[idx + 1]?.image) {
+            filesToUpload.append(
+              "files",
+              filePairs[idx + 1].image,
+              (version ? version + 1 : "1") + ".-image." + songData.title + ".-" + generateRandomString() + "." + filePairs[idx + 1].image.name.split(".")[1]
+            );
+          }
+          if (filePairs[idx + 1]?.audio)
+            filesToUpload.append(
+              "files",
+              filePairs[idx + 1].audio,
+              (version ? version + 1 : "1") + ".-audio." + songData.title + ".-" + generateRandomString() + "." + filePairs[idx + 1].audio.name.split(".")[1]
+            );
+        }
+      });
+    } catch (err) {
+      console.log("ERROR iterating through songs Data : ", err);
+      toast.error(
+        "Error iterating through songs Data : " + `${err instanceof Error ? err.message : ""}` + " Please check all the fields to be filled correctly.",
+        {
+          icon: (
+            <button onClick={() => toast.dismiss()}>
+              <XCircle color="red" />
+            </button>
+          ),
+        }
+      );
+    }
+    if (filesToUpload.getAll("files").length === 0) return [];
+    console.log("filesToUpload", filesToUpload.getAll("files"));
+    const response = await uploadFilesRequestLightHouse(filesToUpload);
+    return response;
+  }
+
   async function uploadFilesRequest(filesToUpload: FormData) {
     const uploadURL = `${API_URL}/${isIPNS ? "upload_v2" : "upload"}`;
     console.log("uploadURL", uploadURL);
@@ -151,6 +197,35 @@ export const UploadData: React.FC = (props) => {
         },
       });
       console.log("THE RESPONSE OF UPLOAD REQ : " + response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error uploading files:", error);
+      if (error?.response.data.statusCode === 403) {
+        /// forbidden  - token expired
+        toast("Native auth token expired. Re-login and try again! ", {
+          icon: <Lightbulb color="yellow"></Lightbulb>,
+        });
+      }
+      toast.error("Error uploading files to Ipfs: " + `${error ? error.message + ". " + error?.response?.data.message : ""}`, {
+        icon: (
+          <button onClick={() => toast.dismiss()}>
+            <XCircle color="red" />
+          </button>
+        ),
+      });
+    }
+  }
+
+  async function uploadFilesRequestLightHouse(filesToUpload: FormData) {
+    const uploadURL = `${API_URL}/upload_v2`;
+    console.log("uploadURLLightHouse", uploadURL);
+    try {
+      const response = await axios.post(uploadURL, filesToUpload, {
+        headers: {
+          "authorization": `Bearer ${theToken}`,
+        },
+      });
+      console.log("THE RESPONSE OF UPLOAD REQ LLightHouse : " + response.data);
       return response.data;
     } catch (error: any) {
       console.error("Error uploading files:", error);
@@ -218,6 +293,62 @@ export const UploadData: React.FC = (props) => {
             cover_art_url: matchingObjImage
               ? `https://ipfs.io/ipfs/${isIPNS ? matchingObjImage.folderHash : matchingObjImage.folderCidv1}/${matchingObjImage.fileName}`
               : songObj.cover_art_url,
+            title: songObj?.title,
+          };
+        }
+      });
+      // return only the songs that are not null in case there are any empty songs
+      return transformedData.filter((song: any) => song !== null);
+    } catch (error: any) {
+      toast.error("Error transforming the data: " + `${error ? error?.message + ". " + error?.response?.data.message : ""}`, {
+        icon: (
+          <button onClick={() => toast.dismiss()}>
+            <XCircle color="red" />
+          </button>
+        ),
+      });
+      console.log("ERROR transforming the data: ", error);
+    }
+  }
+
+  async function transformSongsDataLightHouse() {
+    setProgressBarLightHouse(20);
+    try {
+      const responseDataCIDs = await uploadSongsAndImagesFilesLightHouse();
+      console.log("responseDataCIDs upload files Lighthouse ", responseDataCIDs);
+
+      if (!responseDataCIDs) return;
+
+      // Iterate through the response list and find the matching cidv1
+      const transformedData = Object.values(songsData).map((songObj, index) => {
+        if (songObj && songObj?.title) {
+          let matchingObjImage;
+          let matchingObjSong;
+          const fileObj = filePairs[index + 1];
+          if (fileObj) {
+            if (fileObj.image && fileObj.image.name) {
+              matchingObjImage = responseDataCIDs.find((uploadedFileObj: any) =>
+                uploadedFileObj.fileName.includes((version ? version + 1 : "1") + `.-image.${songObj.title}`)
+              );
+              if (!matchingObjImage) throw new Error("The data has not been uploaded correctly. Image CID could not be found ");
+            }
+            if (fileObj.audio && fileObj.audio.name) {
+              matchingObjSong = responseDataCIDs.find((uploadedFileObj: any) =>
+                uploadedFileObj.fileName.includes((version ? version + 1 : "1") + `.-audio.${songObj.title}`)
+              );
+              if (!matchingObjSong) throw new Error("The data has not been uploaded correctly. Song CID could not be found ");
+            }
+          }
+          console.log("matchingObjImage", matchingObjImage);
+          console.log("responseDataCIDs", responseDataCIDs);
+          return {
+            idx: index + 1,
+            date: new Date(songObj?.date).toISOString(),
+            category: songObj?.category,
+            artist: songObj?.artist,
+            album: songObj?.album,
+            file: matchingObjSong ? `https://ipfs.io/ipfs/${matchingObjSong.folderHash}/${matchingObjSong.fileName}` : songObj.file,
+            cover_art_url: matchingObjImage ? `https://ipfs.io/ipfs/${matchingObjImage.folderHash}/${matchingObjImage.fileName}` : songObj.cover_art_url,
             title: songObj?.title,
           };
         }
@@ -342,6 +473,67 @@ export const UploadData: React.FC = (props) => {
     setProgressBar(100);
   };
 
+  const generateManifestFileLightHouse = async () => {
+    if (!verifyHeaderFields()) {
+      return;
+    }
+
+    try {
+      setIsUploadingManifestLightHouse(true);
+      const data = await transformSongsDataLightHouse();
+      if (data === undefined) {
+        setIsUploadingManifestLightHouse(false);
+        return;
+      }
+
+      setProgressBarLightHouse(60);
+
+      const manifest = {
+        "data_stream": {
+          "name": formData.name,
+          "creator": formData.creator,
+          "created_on": formData.createdOn,
+          "last_modified_on": version ? new Date().toISOString() : formData.createdOn,
+          "marshalManifest": {
+            "totalItems": numberOfSongs - 1,
+            "nestedStream": formData.stream === "true" ? true : false,
+          },
+        },
+        "data": data,
+      };
+
+      const formDataFormat = new FormData();
+      formDataFormat.append(
+        "files",
+        new Blob([JSON.stringify(manifest)], { type: "application/json" }),
+        (version ? version + 1 : "1") + ".-manifest-" + formData.name + "-" + formData.creator + ".-" + generateRandomString() + ".json"
+      );
+      const response = await uploadFilesRequestLightHouse(formDataFormat);
+      console.log(response[0], "MANIFEST file uploaded successfully");
+      let ipfs: any = "";
+
+      const ipnsHash = await addToIpns(response[0].hash);
+      ipfs = "ipfs/" + response[0]?.folderHash + "/" + response[0]?.fileName; //+ ipnsHash;"/" + response[0]?.fileName;
+
+      if (response[0]) setManifestCidLightHouse(ipfs);
+      else {
+        throw new Error("The manifest file has not been uploaded correctly ");
+      }
+    } catch (error) {
+      toast.error("Error generating the manifest file: " + `${error instanceof Error ? error.message : ""}`, {
+        icon: (
+          <button onClick={() => toast.dismiss()}>
+            <XCircle color="red" />
+          </button>
+        ),
+      });
+
+      setIsUploadingManifestLightHouse(false);
+      console.log("Error generating the manifest file:", error);
+    }
+    setIsUploadingManifestLightHouse(false);
+    setProgressBarLightHouse(100);
+  };
   const handleAddMoreSongs = () => {
     setSongsData((prev) => Object.assign(prev, { [numberOfSongs]: {} }));
     setNumberOfSongs((prev) => prev + 1);
@@ -643,7 +835,7 @@ export const UploadData: React.FC = (props) => {
           <ErrorBoundary
             onError={(err) => <ErrorFallbackMusicDataNfts error={err} />}
             FallbackComponent={({ error, resetErrorBoundary }) => <ErrorFallbackMusicDataNfts error={error} />}>
-            <div className="mt-4 space-y-8 p-8 rounded-lg shadow-md   ">
+            <div className="mt-4 space-y-8 p-8 rounded-lg shadow-md">
               {Object.keys(songsData).map((index: any) => (
                 <MusicDataNftForm
                   key={index}
@@ -663,20 +855,24 @@ export const UploadData: React.FC = (props) => {
             Add more songs
           </Button>
         </div>
-        {!manifestCid ? (
-          <button
-            onClick={generateManifestFile}
-            disabled={isUploadButtonDisabled}
-            className={"bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-blue-500/10"}>
-            Upload
-          </button>
-        ) : (
-          <div>
-            <div className="flex flex-col items-center justify-center p-8">
+
+        <button
+          onClick={() => {
+            generateManifestFile();
+            generateManifestFileLightHouse();
+          }}
+          disabled={isUploadButtonDisabled}
+          className={"bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-blue-500/10"}>
+          Upload
+        </button>
+
+        <div>
+          <div className="flex flex-col items-center justify-center p-8">
+            {manifestCid && (
               <ToolTip tooltip="It might take more than 10 min for the files to get pinned and to be visible">
                 <div className="flex flex-col justify-center items-center gap-4">
                   <div className="text-green-400 flex flex-row gap-4">
-                    Success:
+                    Success1:
                     <a href={"https://ipfs.io/" + manifestCid} target="_blank" className="font-semibold underline text-blue-500">
                       {"https://ipfs.io/" + manifestCid}
                     </a>
@@ -688,50 +884,68 @@ export const UploadData: React.FC = (props) => {
                   </div>
                 </div>
               </ToolTip>
-
-              <div className="mt-4 mx-auto">
-                <ToolTip
-                  tooltip=""
-                  tooltipBox={
-                    <div className="w-[400px] relative z-10 p-4 text-sm leading-relaxed text-white bg-gradient-to-b from-sky-500/20 via-[#300171]/20 to-black/20 rounded-3xl shadow-xl">
-                      <ol className="list-decimal ml-4">
-                        <p>To point a subdomain to your IPFS file after generating its hash via zStorage, follow these refined steps:</p>
-                        <li>
-                          <p>Access Domain Controller: Open the control panel of your domain provider.</p>
-                        </li>
-                        <li>
-                          <p>
-                            CNAME Record Setup: Add a CNAME record for your domain. Specify the subdomain you wish to use. Point this subdomain to a public IPFS
-                            gateway, such as "ipfs.namebase.io."
-                          </p>
-                        </li>
-                        <li>
-                          <p>Obtain IPFS Manifest Hash: Retrieve the IPFS manifest hash from your zStorage.</p>
-                        </li>
-                        <li>
-                          <p>
-                            DNSLink TXT Record: Create a new TXT record. Name it _dnslink.yoursubdomain and set its value to dnslink=/ipfs/"IPFS manifest file
-                            hash."
-                          </p>
-                        </li>
-                        <li>Response header modification: In the response header add "x-amz-meta-marshal-deep-fetch" with value 1 </li>
-                        <li>
-                          <p>This will effectively link your subdomain to the IPFS file using DNS records.</p>
-                        </li>
-                      </ol>
-                    </div>
-                  }>
-                  <div className="bg-sky-500 w-34 h-12  rounded-full  blur-xl opacity-50"> </div>
-                  <div className="z-10 text-xl flex flex-row items-center justify-center -mt-8 ">
-                    What's next ? <InfoIcon className=" scale-75"></InfoIcon>
+            )}
+            {manifestCidLightHouse && (
+              <ToolTip tooltip="It might take more than 10 min for the files to get pinned and to be visible">
+                <div className="flex flex-col justify-center items-center gap-4">
+                  <div className="text-green-400 flex flex-row gap-4">
+                    Success:
+                    <a href={"https://ipfs.io/" + manifestCidLightHouse} target="_blank" className="font-semibold underline text-blue-500">
+                      {"https://ipfs.io/" + manifestCidLightHouse}
+                    </a>
+                    <CopyIcon onClick={() => copyLink("https://ipfs.io/" + manifestCidLightHouse)} className="h-5 w-5 cursor-pointer text-blue-500"></CopyIcon>
                   </div>
-                </ToolTip>
-              </div>
+                  <div className="text-green-400 flex flex-row gap-4">
+                    {manifestCidLightHouse}
+                    <CopyIcon onClick={() => copyLink(manifestCidLightHouse)} className="h-5 w-5 cursor-pointer text-blue-500"></CopyIcon>
+                  </div>
+                </div>
+              </ToolTip>
+            )}
+            <div className="mt-4 mx-auto">
+              <ToolTip
+                tooltip=""
+                tooltipBox={
+                  <div className="w-[400px] relative z-10 p-4 text-sm leading-relaxed text-white bg-gradient-to-b from-sky-500/20 via-[#300171]/20 to-black/20 rounded-3xl shadow-xl">
+                    <ol className="list-decimal ml-4">
+                      <p>To point a subdomain to your IPFS file after generating its hash via zStorage, follow these refined steps:</p>
+                      <li>
+                        <p>Access Domain Controller: Open the control panel of your domain provider.</p>
+                      </li>
+                      <li>
+                        <p>
+                          CNAME Record Setup: Add a CNAME record for your domain. Specify the subdomain you wish to use. Point this subdomain to a public IPFS
+                          gateway, such as "ipfs.namebase.io."
+                        </p>
+                      </li>
+                      <li>
+                        <p>Obtain IPFS Manifest Hash: Retrieve the IPFS manifest hash from your zStorage.</p>
+                      </li>
+                      <li>
+                        <p>
+                          DNSLink TXT Record: Create a new TXT record. Name it _dnslink.yoursubdomain and set its value to dnslink=/ipfs/"IPFS manifest file
+                          hash."
+                        </p>
+                      </li>
+                      <li>Response header modification: In the response header add "x-amz-meta-marshal-deep-fetch" with value 1 </li>
+                      <li>
+                        <p>This will effectively link your subdomain to the IPFS file using DNS records.</p>
+                      </li>
+                    </ol>
+                  </div>
+                }>
+                <div className="bg-sky-500 w-34 h-12  rounded-full  blur-xl opacity-50"> </div>
+                <div className="z-10 text-xl flex flex-row items-center justify-center -mt-8 ">
+                  What's next ? <InfoIcon className=" scale-75"></InfoIcon>
+                </div>
+              </ToolTip>
             </div>
           </div>
-        )}
+        </div>
+
         {isUploadingManifest && progressBar < 100 && <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 z-5 "></div>}
         {isUploadingManifest && progressBar < 100 && <ProgressBar progress={progressBar} />}
+        {isUploadingManifestLightHouse && progressBarLightHouse < 100 && <ProgressBar progress={progressBarLightHouse} />}
       </div>
     </ErrorBoundary>
   );

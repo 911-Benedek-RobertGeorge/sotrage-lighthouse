@@ -54,7 +54,7 @@ export const XStorageCheckBox: React.FC<XStorageCheckBoxProps> = (props) => {
               <ToolTip tooltip={props.disabled && props.disabled[index] ? "Coming soon" : ""}>
                 <div className="block">
                   {/* add logo maybe */}
-                  <div className="w-full text-lg font-semibold hidden">{title}</div>
+                  <div className="w-full text-lg font-semibold  ">{title}</div>
                   <div className="w-full text-sm hidden"> {descriptions[index]}</div>
                 </div>
               </ToolTip>

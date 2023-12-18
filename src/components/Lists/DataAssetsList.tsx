@@ -39,10 +39,10 @@ export const DataAssetList: React.FC = () => {
   const [storedDataAssetsLightHouse, setStoredDataAssetsLightHouse] = useState<DataAsset[]>([]);
 
   const { tokenLogin } = useGetLoginInfo();
+  const theToken = tokenLogin?.nativeAuthToken;
   const [latestVersionCid, setLatestVersionCid] = useState<{ [key: string]: { version: number; cidv1: string } }>({});
   const [manifestFiles, setManifestFiles] = useState<ManifestFile[]>([]);
   const [manifestFilesLighthouse, setManifestFilesLighthouse] = useState<ManifestFile[]>([]);
-  const theToken = tokenLogin?.nativeAuthToken;
 
   // fetch all data assets of an address
   async function fetchAllDataAssetsOfAnAddress() {
@@ -258,4 +258,3 @@ export const DataAssetList: React.FC = () => {
     </div>
   );
 };
-
