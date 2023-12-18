@@ -65,7 +65,7 @@ export const UploadData: React.FC = (props) => {
     stream: "true",
   });
 
-  const isIPNS = descentralized?.includes("IPNS") || (ipnsKey ? true : false);
+  const isIPNS = false; ///descentralized?.includes("IPNS") || (ipnsKey ? true : false);
 
   useEffect(() => {
     if (manifestFile && manifestFile.data_stream) {
