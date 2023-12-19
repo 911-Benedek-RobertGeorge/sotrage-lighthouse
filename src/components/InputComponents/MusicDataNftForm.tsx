@@ -6,7 +6,6 @@ import { Button } from "../../libComponents/Button";
 import { ArrowUp, ArrowDown, Trash2, Edit2, CheckCircleIcon, Loader2 } from "lucide-react";
 import songFallbackImage from "../../assets/img/audio-player-image.png";
 
-// todo add validation for the file size and type
 // todo if the img is not loading it keeps the image of the song you are swaping with (maybe add a fallback image)
 // todo check why getting 502(The gateway is currently overloaded. Please wait a while and retry your request.
 // todo when deleting a song the next one after gets required fields and saved
@@ -16,38 +15,14 @@ const formSchema = z.object({
   category: z.string().min(1, "Required field"),
   artist: z.string().min(1, "Required field"),
   album: z.string().min(1, "Required field"),
-  title: z.string().min(1, "Required field"),
+  title: z
+    .string()
+    .min(1, "Required field")
+    .refine((data) => !data.includes("manifest"), {
+      message: "The title cannot contain the word 'manifest'",
+    }),
   cover_art_url: z.string().min(1, "Required field"),
   file: z.string().min(1, "Required field"),
-  // file: z   ///TODO  ADD THE VALIDATION if needed max size and type
-  //   .any()
-  //   .refine(
-  //     (file) => {
-  //       //console.log("SIZE", file);
-  //       return file[0] && file[0].size <= MAX_FILE_SIZE;
-  //     },
-  //     { message: `Max song size is 5MB.` }
-  //   )
-  //   .refine(
-  //     (file) => {
-  //       return file[0] && file[0].type === "audio/mpeg";
-  //     },
-  //     { message: "Only audio/mpeg formats are supported." } /// maybe add more
-  //   ),
-  // cover_art_url: z
-  //   .any()
-  //   .refine(
-  //     (file) => {
-  //       return file[0] && file[0].size <= MAX_FILE_SIZE;
-  //     },
-  //     { message: `Max image size is 5MB.` }
-  //   )
-  //   .refine(
-  //     (file) => {
-  //       return ACCEPTED_IMAGE_TYPES.includes(file[0]?.type);
-  //     },
-  //     { message: "Only .jpg, .jpeg, .png and .webp formats are supported." }
-  //   ),
 });
 
 type MusicDataNftFormProps = {
@@ -141,7 +116,7 @@ export function MusicDataNftForm(props: MusicDataNftFormProps) {
   }
 
   function handleMoveDown() {
-    props.swapFunction(Number(props.index), Number(props.index) + 1); // -1 transform string in number, solves the problem for now
+    props.swapFunction(Number(props.index), Number(props.index) + 1); // -1 transform string in number
   }
 
   function deleteSong() {
@@ -149,7 +124,7 @@ export function MusicDataNftForm(props: MusicDataNftFormProps) {
   }
 
   return (
-    <div className="  z-2 p-4 flex flex-col bg-gradient-to-b from-sky-500/20 via-[#300171]/20 to-black/20 rounded-3xl shadow-xl hover:shadow-sky-500/50 max-w mx-auto">
+    <div className="z-2 p-4 flex flex-col bg-gradient-to-b from-sky-500/20 via-[#300171]/20 to-black/20 rounded-3xl shadow-xl hover:shadow-sky-500/50 max-w mx-auto">
       <div className="relative">
         <div className="absolute top-0 right-0">
           <div className="flex flex-col justify-between">
@@ -204,20 +179,18 @@ export function MusicDataNftForm(props: MusicDataNftFormProps) {
           </div>
           {props.unsavedChanges != undefined && props.unsavedChanges === false && (
             <div className="mt-2  flex flex-row gap-2 text-green-400">
-              {" "}
-              Saved <CheckCircleIcon />{" "}
+              Saved <CheckCircleIcon />
             </div>
           )}
         </div>
         <div className="gap-4 flex-col flex items-center justify-center ">
           <Suspense fallback={<div>Loading image...</div>}>
             <img
-              className="mx-auto flex justify-center allign-center w-32 h-32 border border-white"
-              src={imageURL !== "" ? imageURL : songFallbackImage}
-              onError={() => {
-                setImageURL(songFallbackImage);
-              }}
-              alt={"Cover Image"}></img>{" "}
+              className="mx-auto w-32 h-32 border border-white"
+              src={imageURL || songFallbackImage}
+              onError={() => setImageURL(songFallbackImage)}
+              alt="Cover Image"
+            />
           </Suspense>
           <label className=" block text-foreground">Cover Art Image</label>
           <div className="flex flex-col w-full justify-end">
